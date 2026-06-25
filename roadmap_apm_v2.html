@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дорожная карта АПМ — Империя</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #F1F5F9; min-height: 100vh; padding: 16px; }
+
+  .header { background: #1F3864; border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; color: white; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .header-eyebrow { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #93C5FD; margin-bottom: 4px; }
+  .header-title { font-size: 20px; font-weight: bold; }
+  .header-sub { font-size: 12px; color: #BFDBFE; margin-top: 4px; }
+  .header-pct { font-size: 28px; font-weight: bold; }
+  .header-pct-label { font-size: 11px; color: #93C5FD; text-align: right; }
+  .progress-bar-bg { margin-top: 16px; background: rgba(255,255,255,0.15); border-radius: 4px; height: 6px; }
+  .progress-bar { height: 6px; border-radius: 4px; background: #22C55E; transition: width 0.4s; }
+  .stats-row { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .stat { font-size: 12px; }
+  .stat-val { font-weight: bold; font-size: 16px; }
+  .sync-info { font-size: 11px; color: #64748B; margin-left: auto; }
+
+  /* Weekly dashboard */
+  .weeks-panel { background: white; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .weeks-title { font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .weeks-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .week-card { flex-shrink: 0; border-radius: 8px; padding: 8px 12px; min-width: 110px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+  .week-card:hover { filter: brightness(0.96); }
+  .week-card.current { border-color: #1F3864; }
+  .week-card.selected { box-shadow: 0 0 0 2px #3B82F6; }
+  .week-label { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .week-dates { font-size: 10px; margin-bottom: 6px; }
+  .week-counts { display: flex; gap: 4px; flex-wrap: wrap; }
+  .week-badge { font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; }
+
+  /* Overdue legend */
+  .overdue-legend { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .overdue-item { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+
+  .block { margin-bottom: 10px; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .block-header { padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+  .block-header:hover { filter: brightness(1.08); }
+  .block-title { color: white; font-weight: bold; font-size: 13px; }
+  .block-meta { display: flex; align-items: center; gap: 10px; }
+  .block-count { font-size: 11px; color: rgba(255,255,255,0.7); }
+  .block-arrow { color: rgba(255,255,255,0.8); font-size: 14px; transition: transform 0.2s; }
+  .block-arrow.open { transform: rotate(180deg); }
+  .block-tasks { display: none; }
+  .block-tasks.open { display: block; }
+
+  /* Week separator inside block */
+  .week-separator { padding: 6px 16px; font-size: 11px; font-weight: bold; color: #6B7280; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+  .week-sep-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #E2E8F0; color: #374151; }
+  .week-sep-current { background: #1F3864; color: white; }
+
+  .task { padding: 12px 16px; border-bottom: 1px solid #F1F5F9; transition: background 0.2s; }
+  .task:last-child { border-bottom: none; }
+  .task-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+  .task-left { flex: 1; min-width: 200px; }
+  .task-name { font-weight: bold; font-size: 13px; color: #1E293B; margin-bottom: 3px; }
+  .task-actions { font-size: 12px; color: #475569; margin-bottom: 4px; }
+  .task-risk { font-size: 11px; color: #92400E; background: #FEF3C7; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
+  .task-comment-display { font-size: 11px; color: #4B5563; background: #F0F9FF; border: 1px solid #BAE6FD; padding: 3px 7px; border-radius: 4px; margin-top: 4px; cursor: pointer; display: inline-block; }
+  .task-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 150px; }
+  .task-meta { display: flex; gap: 8px; font-size: 11px; color: #64748B; flex-wrap: wrap; justify-content: flex-end; }
+  .deadline-tag { font-size: 11px; font-weight: bold; padding: 1px 6px; border-radius: 3px; }
+  .deadline-ok { background: #E2E8F0; color: #374151; }
+  .deadline-done-ok { background: #DCFCE7; color: #15803D; }
+  .deadline-overdue { background: #FEF08A; color: #713F12; }
+  .deadline-overdue-week { background: #FECACA; color: #7F1D1D; }
+  .task-status-select { font-size: 11px; font-weight: bold; border-radius: 5px; padding: 3px 7px; cursor: pointer; outline: none; border-width: 1.5px; border-style: solid; }
+  .btn-comment { font-size: 11px; color: #6B7280; background: transparent; border: 1px solid #D1D5DB; border-radius: 5px; padding: 2px 8px; cursor: pointer; }
+  .btn-comment:hover { background: #F9FAFB; }
+
+  .task-overdue { background: #FFFBEB !important; }
+  .task-overdue-week { background: #FEF2F2 !important; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 10px; padding: 20px; width: 100%; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+  .modal-title { font-weight: bold; font-size: 14px; margin-bottom: 12px; color: #1E293B; }
+  .modal textarea { width: 100%; height: 80px; font-size: 13px; padding: 8px; border: 1.5px solid #CBD5E1; border-radius: 6px; resize: vertical; font-family: Arial, sans-serif; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+  .btn-cancel { font-size: 12px; padding: 6px 14px; border: 1px solid #D1D5DB; border-radius: 6px; cursor: pointer; background: white; }
+  .btn-save { font-size: 12px; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; background: #1F3864; color: white; font-weight: bold; }
+  .footer { text-align: center; font-size: 11px; color: #94A3B8; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .legend-item { font-size: 11px; padding: 3px 8px; border-radius: 4px; border-width: 1.5px; border-style: solid; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-eyebrow">Империя · Внутренний инструмент</div>
+      <div class="header-title">Дорожная карта АПМ</div>
+      <div class="header-sub">Агропродмаш · Август — Пост-продакшн</div>
+    </div>
+    <div>
+      <div class="header-pct" id="pct">0%</div>
+      <div class="header-pct-label">выполнено</div>
+    </div>
+  </div>
+  <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+  <div class="stats-row">
+    <div class="stat"><span class="stat-val" id="stat-total" style="color:#93C5FD">0</span> <span style="color:#CBD5E1">всего</span></div>
+    <div class="stat"><span class="stat-val" id="stat-done" style="color:#86EFAC">0</span> <span style="color:#CBD5E1">готово</span></div>
+    <div class="stat"><span class="stat-val" id="stat-work" style="color:#FDE68A">0</span> <span style="color:#CBD5E1">в работе</span></div>
+    <div class="stat"><span class="stat-val" id="stat-blocked" style="color:#FCA5A5">0</span> <span style="color:#CBD5E1">заблокировано</span></div>
+    <div class="sync-info" id="sync-info">Загрузка...</div>
+  </div>
+</div>
+
+<!-- Weekly dashboard -->
+<div class="weeks-panel">
+  <div class="weeks-title">📅 Задачи по неделям</div>
+  <div class="weeks-scroll" id="weeks-scroll"></div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <span class="legend-item" style="color:#6B7280;border-color:#6B7280;background:#F9FAFB">Не начато</span>
+  <span class="legend-item" style="color:#B45309;border-color:#B45309;background:#FFFBEB">В работе</span>
+  <span class="legend-item" style="color:#1D4ED8;border-color:#1D4ED8;background:#EFF6FF">На согласовании</span>
+  <span class="legend-item" style="color:#DC2626;border-color:#DC2626;background:#FEF2F2">Заблокировано</span>
+  <span class="legend-item" style="color:#15803D;border-color:#15803D;background:#F0FDF4">Готово</span>
+  <span class="legend-item" style="color:#15803D;border-color:#15803D;background:#DCFCE7">✅ Готово вовремя</span>
+  <span class="legend-item" style="color:#713F12;border-color:#CA8A04;background:#FEF08A">⚠ Просрочено</span>
+  <span class="legend-item" style="color:#7F1D1D;border-color:#DC2626;background:#FECACA">🔴 Просрочено &gt;1 нед.</span>
+</div>
+
+<div id="blocks-container"></div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Комментарий к задаче</div>
+    <textarea id="modal-text" placeholder="Введите комментарий..."></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="saveComment()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Статусы и комментарии сохраняются в Firebase · Общий доступ для команды</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCFf46_ZnxpPo3_gUWBHYcQF6CaTndCIJ8",
+  authDomain: "imperia-5496b.firebaseapp.com",
+  databaseURL: "https://imperia-5496b-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "imperia-5496b",
+  storageBucket: "imperia-5496b.firebasestorage.app",
+  messagingSenderId: "444040436478",
+  appId: "1:444040436478:web:f2b1a34a238e59d355a3af"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const dbRef = ref(db, "apm_roadmap");
+
+// Current week start: 29 June 2026 (Monday)
+const WEEK_START = new Date(2026, 5, 29); // June 29
+
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function fmtDate(d) { return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }); }
+function fmtShort(d) { return d.toLocaleDateString("ru-RU", { day: "numeric", month: "numeric" }); }
+
+// Generate weeks: week 0 = 23-27 Jun (pre), then from 29 Jun onwards
+const WEEKS = [];
+// Week before current
+WEEKS.push({ start: new Date(2026,5,23), end: new Date(2026,5,27), label: "Нед. −1", isCurrent: false, isPast: true });
+// Current week
+WEEKS.push({ start: new Date(2026,5,29), end: new Date(2026,6,3), label: "Текущая", isCurrent: true, isPast: false });
+// Future weeks
+for (let w = 1; w <= 18; w++) {
+  const s = addDays(WEEK_START, w * 7);
+  const e = addDays(s, 4);
+  WEEKS.push({ start: s, end: e, label: `Нед. +${w}`, isCurrent: false, isPast: false });
+}
+
+const TODAY = new Date(2026, 5, 25); // June 25, 2026
+
+// Parse deadline string to Date for comparison
+function parseDeadline(str) {
+  if (!str || str === "Ongoing" || str === "TBD") return null;
+  const months = { "янв":0,"фев":1,"мар":2,"апр":3,"май":4,"июн":5,"июл":6,"авг":7,"сент":8,"окт":9,"ноя":10,"дек":11 };
+  // "25 июл" -> day month
+  const m = str.match(/(\d+)\s+([а-яё]+)/i);
+  if (m) {
+    const mo = months[m[2].toLowerCase().substring(0,3)];
+    if (mo !== undefined) return new Date(2026, mo, parseInt(m[1]));
+  }
+  // "10 авг" etc
+  const m2 = str.match(/([а-яё]+)/i);
+  if (m2) {
+    const mo = months[m2[1].toLowerCase().substring(0,3)];
+    if (mo !== undefined) return new Date(2026, mo, 1); // first of month
+  }
+  return null;
+}
+
+// Assign week index to task based on deadline
+function getWeekIdx(deadlineStr) {
+  const d = parseDeadline(deadlineStr);
+  if (!d) return WEEKS.length - 1; // last week = "ongoing"
+  for (let i = 0; i < WEEKS.length; i++) {
+    if (d <= WEEKS[i].end) return i;
+  }
+  return WEEKS.length - 1;
+}
+
+// Overdue status
+function overdueStatus(deadlineStr, taskStatus) {
+  if (taskStatus === "done") return "ok";
+  const d = parseDeadline(deadlineStr);
+  if (!d) return "ok";
+  const diffMs = TODAY - d;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (diffDays > 7) return "overdue_week";
+  if (diffDays > 0) return "overdue";
+  return "ok";
+}
+
+const STATUSES = [
+  { id: "todo",       label: "Не начато",         color: "#6B7280", bg: "#F9FAFB" },
+  { id: "inprogress", label: "В работе",           color: "#B45309", bg: "#FFFBEB" },
+  { id: "review",     label: "На согласовании",    color: "#1D4ED8", bg: "#EFF6FF" },
+  { id: "blocked",    label: "Заблокировано",      color: "#DC2626", bg: "#FEF2F2" },
+  { id: "done",       label: "Готово",             color: "#15803D", bg: "#F0FDF4" },
+];
+
+const BLOCKS = [
+  { id: "docs", title: "1. Старт и документы", color: "#1F3864", tasks: [
+    { id: "dopnik",   task: "Допник по АПМ",                    actions: "Контроль статуса подписания; определить ответственного за проверку", deadline: "25 июл", owner: "Виктор",       risk: "Блокирует юридически значимые работы" },
+    { id: "meeting",  task: "Встреча с Татьяной Назаровной",     actions: "Пакет: карта, форма «250 компаний», рубрикатор, макет сайта, письма, long list сетей", deadline: "Июл", owner: "Виктор + Лена", risk: "Фиксировать договорённости письменно" },
+    { id: "contact",  task: "Ответственный в Экспоцентре",       actions: "Получить имя + оперативный канал связи", deadline: "Июл",    owner: "Виктор",       risk: "Критично для всех коммуникаций" },
+    { id: "approval", task: "Регламент согласования писем",      actions: "Все письма в Экспоцентр — только после согласования", deadline: "1 авг",  owner: "Лена",         risk: "Урок Продэкспо" },
+  ]},
+  { id: "leads", title: "2. Лидогенерация и контент", color: "#1E4D8C", tasks: [
+    { id: "content_plan",  task: "Контент-план сайта и рассылок",      actions: "Темы, форматы, каналы (сайт, email, VK); KPI по каждому каналу", deadline: "10 авг", owner: "Алина / Катя", risk: "" },
+    { id: "site_mock",     task: "Макет раздела на сайте Экспоцентра", actions: "HTML-макет с контактами (Алина, Катя, Ира); согласовать с Экспоцентром", deadline: "15 авг", owner: "Алина",        risk: "Уточнить домен — кто покупает" },
+    { id: "letters",       task: "Тексты писем и структуры баз",       actions: "Письма-приглашения от Экспоцентра и «Империи» (для Bitersend); посты для чатов", deadline: "20 авг", owner: "Катя / Ира",   risk: "Все письма через согласование" },
+    { id: "kontrakt",      task: "Настройка «Контракт Экспо»",         actions: "Запустить с учётом опыта «Энергетики»; настроить CRM/трекинг", deadline: "20 авг", owner: "Алина",        risk: "" },
+    { id: "mailing_coord", task: "Координация графиков рассылок",      actions: "Согласовать расписание Экспоцентра и «Империи» — без пересечений", deadline: "Ongoing", owner: "Катя",         risk: "Использовать базы 2023" },
+  ]},
+  { id: "buyers", title: "3. Набор сетей и байерская программа", color: "#164E63", tasks: [
+    { id: "rubricator",     task: "Рубрикатор категорий для закупщиков", actions: "На базе прошлых рубрикаторов + опыт DairyTech; согласовать с закупщиками", deadline: "10 авг", owner: "Лена",        risk: "Заложить время на консультации" },
+    { id: "longlist",       task: "Long list целевых сетей",             actions: "Список приоритетных сетей для байерской программы", deadline: "1 авг",  owner: "Лена",        risk: "" },
+    { id: "infopak",        task: "Пакет инфоматериалов для сетей",      actions: "Описание программы, выгоды, процесс участия — PDF/письмо", deadline: "15 авг", owner: "Лена + Катя", risk: "" },
+    { id: "weekly_plan",    task: "Понедельный план набора (авг–сент)",  actions: "Лена — управление, Катя и Ира — звонки/переписка; учесть отпуск Иры", deadline: "1 авг",  owner: "Лена",        risk: "Учесть отпуск Иры" },
+    { id: "active_recruit", task: "Активный набор сетей",                actions: "Исходящие звонки + письма по long list; еженедельные чекпоинты", deadline: "30 сент", owner: "Катя + Ира",  risk: "" },
+  ]},
+  { id: "base", title: "4. Работа с базой экспонентов", color: "#1F4E79", tasks: [
+    { id: "form",      task: "Форма-таблица для Экспоцентра",  actions: "Структура полей (название, телефон, контакт, комментарии) + инструкция", deadline: "Июл",   owner: "Лена",        risk: "Включая «250 компаний» и «проблемных»" },
+    { id: "get_250",   task: "Получение базы «250 компаний»",  actions: "Запросить у Экспоцентра в согласованном формате; уточнить критерии «проблемных»", deadline: "10 авг", owner: "Виктор",      risk: "Только экспоненты, не посетители" },
+    { id: "script",    task: "Скрипт прозвона экспонентов",    actions: "Короткая подача байерской программы, констатация участия, запрос контакта", deadline: "5 авг",  owner: "Лена / Катя", risk: "" },
+    { id: "call_plan", task: "План прозвона на август",        actions: "Распределить нагрузку, контрольные точки еженедельно", deadline: "5 авг",  owner: "Лена",        risk: "" },
+  ]},
+  { id: "ops", title: "5. Операционное и техническое", color: "#374151", tasks: [
+    { id: "domain",   task: "Домен/поддомен проекта",         actions: "Принять решение; назначить ответственного за покупку и настройку", deadline: "10 авг", owner: "TBD",          risk: "⚠ Блокирует сайт" },
+    { id: "tech",     task: "Техобеспечение мероприятия",     actions: "Уточнить у Экспоцентра: плазма, оборудование; план Б при отсутствии", deadline: "1 сент", owner: "Виктор",       risk: "" },
+    { id: "coffee",   task: "Кофебрейк",                      actions: "Уточнить площадку; при ограничениях — спецсотрудник для закупщиков", deadline: "1 сент", owner: "TBD",          risk: "" },
+    { id: "comms",    task: "Стабильная командная связь",     actions: "Telegram нестабилен; создать дублирующие группы; проработать VPN", deadline: "1 авг",  owner: "Лена",         risk: "Временное решение есть — нужно постоянное" },
+    { id: "payments", task: "Таблица обязательств и оплат",   actions: "Обновить и сверить: даты, суммы, материалы, статусы по Экспоцентру", deadline: "Ongoing", owner: "Виктор / Лена",risk: "" },
+  ]},
+  { id: "post", title: "6. Пост-продакшн и PR", color: "#312E81", tasks: [
+    { id: "onsite",      task: "Ответственный за сбор материалов", actions: "Назначить; список экспонентов для видеоотзывов; подготовить вопросы", deadline: "1 окт",  owner: "Лена",        risk: "«Кружочки», фото, видео, Яндекс.Карты" },
+    { id: "qr",          task: "QR-стойки и механика отзывов",     actions: "QR-материалы для Яндекс.Карт с упоминанием АПМ и «Контракт Экспо»", deadline: "1 окт",  owner: "Алина",       risk: "Страница должна быть создана заранее" },
+    { id: "postrelease", task: "Пост-релиз для Экспоцентра",       actions: "Фото, цифры, видео, распечатанные контракты, отзывы — сильный внутренний PR", deadline: "1 ноя",  owner: "Катя / Лена", risk: "" },
+  ]},
+];
+
+const ALL_TASKS = BLOCKS.flatMap(b => b.tasks.map(t => ({ ...t, blockId: b.id })));
+
+let statuses = {};
+let comments = {};
+let activeModal = null;
+let openBlocks = new Set(BLOCKS.map(b => b.id));
+
+function getStatus(id) { return statuses[id] || "todo"; }
+function getStatusObj(id) { return STATUSES.find(s => s.id === id) || STATUSES[0]; }
+
+function buildWeeksDashboard() {
+  const scroll = document.getElementById("weeks-scroll");
+  scroll.innerHTML = "";
+
+  WEEKS.forEach((week, wi) => {
+    const weekTasks = ALL_TASKS.filter(t => getWeekIdx(t.deadline) === wi);
+    if (weekTasks.length === 0 && !week.isCurrent) return;
+
+    const done = weekTasks.filter(t => getStatus(t.id) === "done").length;
+    const blocked = weekTasks.filter(t => getStatus(t.id) === "blocked").length;
+    const overdue = weekTasks.filter(t => overdueStatus(t.deadline, getStatus(t.id)) !== "ok").length;
+
+    const bg = week.isCurrent ? "#EFF6FF" : week.isPast ? "#FEF2F2" : "#F8FAFC";
+    const borderColor = week.isCurrent ? "#1F3864" : week.isPast ? "#FECACA" : "#E2E8F0";
+
+    const card = document.createElement("div");
+    card.className = "week-card" + (week.isCurrent ? " current" : "");
+    card.style.background = bg;
+    card.style.borderColor = borderColor;
+    card.innerHTML = `
+      <div class="week-label" style="color:${week.isCurrent ? '#1F3864' : week.isPast ? '#DC2626' : '#6B7280'}">${week.label}${week.isCurrent ? ' ★' : ''}</div>
+      <div class="week-dates" style="color:#94A3B8">${fmtShort(week.start)} – ${fmtShort(week.end)}</div>
+      <div class="week-counts">
+        <span class="week-badge" style="background:#E2E8F0;color:#374151">${weekTasks.length} задач</span>
+        ${done > 0 ? `<span class="week-badge" style="background:#DCFCE7;color:#15803D">✓${done}</span>` : ""}
+        ${overdue > 0 ? `<span class="week-badge" style="background:#FEF08A;color:#713F12">⚠${overdue}</span>` : ""}
+        ${blocked > 0 ? `<span class="week-badge" style="background:#FECACA;color:#7F1D1D">🔴${blocked}</span>` : ""}
+      </div>
+    `;
+    scroll.appendChild(card);
+  });
+}
+
+function buildUI() {
+  const container = document.getElementById("blocks-container");
+  container.innerHTML = "";
+
+  BLOCKS.forEach(block => {
+    const isOpen = openBlocks.has(block.id);
+    const doneCount = block.tasks.filter(t => getStatus(t.id) === "done").length;
+
+    // Group tasks by week
+    const tasksByWeek = {};
+    block.tasks.forEach(task => {
+      const wi = getWeekIdx(task.deadline);
+      if (!tasksByWeek[wi]) tasksByWeek[wi] = [];
+      tasksByWeek[wi].push(task);
+    });
+    const weekIndices = Object.keys(tasksByWeek).map(Number).sort((a, b) => a - b);
+
+    let tasksHtml = "";
+    weekIndices.forEach(wi => {
+      const week = WEEKS[wi];
+      const isCurrent = week?.isCurrent;
+      const isPast = week?.isPast;
+      const weekLabel = week ? `${week.label}: ${fmtDate(week.start)} – ${fmtDate(week.end)}` : "Ongoing";
+      tasksHtml += `
+        <div class="week-separator">
+          <span class="week-sep-badge ${isCurrent ? 'week-sep-current' : ''}">${weekLabel}</span>
+        </div>
+      `;
+      tasksByWeek[wi].forEach(task => {
+        tasksHtml += buildTask(task);
+      });
+    });
+
+    const div = document.createElement("div");
+    div.className = "block";
+    div.innerHTML = `
+      <div class="block-header" style="background:${block.color}" onclick="toggleBlock('${block.id}')">
+        <div class="block-title">${block.title}</div>
+        <div class="block-meta">
+          <span class="block-count">${doneCount}/${block.tasks.length} готово</span>
+          <span class="block-arrow ${isOpen ? 'open' : ''}" id="arrow-${block.id}">▼</span>
+        </div>
+      </div>
+      <div class="block-tasks ${isOpen ? 'open' : ''}" id="tasks-${block.id}">
+        ${tasksHtml}
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  updateStats();
+  buildWeeksDashboard();
+}
+
+function buildTask(task) {
+  const st = getStatus(task.id);
+  const stObj = getStatusObj(st);
+  const taskComment = comments[task.id] || "";
+  const od = overdueStatus(task.deadline, st);
+
+  let taskBg = stObj.bg;
+  let deadlineClass = "deadline-ok";
+  let deadlinePrefix = "📅";
+  if (st === "done" && od === "ok")         { taskBg = "#F0FDF4"; deadlineClass = "deadline-done-ok"; deadlinePrefix = "✅"; }
+  else if (od === "overdue_week")           { taskBg = "#FEF2F2"; deadlineClass = "deadline-overdue-week"; deadlinePrefix = "🔴"; }
+  else if (od === "overdue")               { taskBg = "#FFFBEB"; deadlineClass = "deadline-overdue";      deadlinePrefix = "⚠"; }
+
+  const options = STATUSES.map(s =>
+    `<option value="${s.id}" ${s.id === st ? "selected" : ""}>${s.label}</option>`
+  ).join("");
+
+  return `
+    <div class="task" id="task-${task.id}" style="background:${taskBg}">
+      <div class="task-inner">
+        <div class="task-left">
+          <div class="task-name">${task.task}</div>
+          <div class="task-actions">${task.actions}</div>
+          ${task.risk ? `<div class="task-risk">⚠ ${task.risk}</div>` : ""}
+          ${taskComment ? `<div class="task-comment-display" onclick="openModal('${task.id}')">💬 ${escHtml(taskComment)}</div>` : ""}
+        </div>
+        <div class="task-right">
+          <div class="task-meta">
+            <span>👤 ${task.owner}</span>
+            <span class="deadline-tag ${deadlineClass}">${deadlinePrefix} ${task.deadline}</span>
+          </div>
+          <select class="task-status-select"
+            style="color:${stObj.color};border-color:${stObj.color};background:${stObj.bg}"
+            onchange="changeStatus('${task.id}', this.value)">
+            ${options}
+          </select>
+          <button class="btn-comment" onclick="openModal('${task.id}')">
+            ${taskComment ? "✏ Комментарий" : "+ Комментарий"}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function updateStats() {
+  const all = ALL_TASKS;
+  const total = all.length;
+  const done = all.filter(t => getStatus(t.id) === "done").length;
+  const work = all.filter(t => getStatus(t.id) === "inprogress").length;
+  const blocked = all.filter(t => getStatus(t.id) === "blocked").length;
+  const pct = Math.round((done / total) * 100);
+
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("progress-bar").style.width = pct + "%";
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-done").textContent = done;
+  document.getElementById("stat-work").textContent = work;
+  document.getElementById("stat-blocked").textContent = blocked;
+}
+
+window.toggleBlock = function(id) {
+  if (openBlocks.has(id)) { openBlocks.delete(id); } else { openBlocks.add(id); }
+  document.getElementById("tasks-" + id).classList.toggle("open");
+  document.getElementById("arrow-" + id).classList.toggle("open");
+};
+
+window.changeStatus = function(taskId, newStatus) {
+  statuses[taskId] = newStatus;
+  const updates = {};
+  updates["statuses/" + taskId] = newStatus;
+  updates["updatedAt"] = new Date().toLocaleString("ru-RU");
+  update(dbRef, updates);
+  // Rebuild just this task
+  const block = BLOCKS.find(b => b.tasks.find(t => t.id === taskId));
+  const task = block?.tasks.find(t => t.id === taskId);
+  if (task) {
+    const el = document.getElementById("task-" + taskId);
+    if (el) el.outerHTML = buildTask(task);
+  }
+  updateStats();
+  buildWeeksDashboard();
+  // update block count
+  if (block) {
+    const doneCount = block.tasks.filter(t => getStatus(t.id) === "done").length;
+    const countEl = document.querySelector(`#tasks-${block.id}`)?.previousElementSibling?.querySelector(".block-count");
+    if (countEl) countEl.textContent = `${doneCount}/${block.tasks.length} готово`;
+  }
+};
+
+window.openModal = function(taskId) {
+  activeModal = taskId;
+  document.getElementById("modal-text").value = comments[taskId] || "";
+  document.getElementById("modal").classList.add("open");
+  setTimeout(() => document.getElementById("modal-text").focus(), 50);
+};
+
+window.closeModal = function() {
+  activeModal = null;
+  document.getElementById("modal").classList.remove("open");
+};
+
+window.saveComment = function() {
+  if (!activeModal) return;
+  const text = document.getElementById("modal-text").value.trim();
+  comments[activeModal] = text;
+  const updates = {};
+  updates["comments/" + activeModal] = text;
+  updates["updatedAt"] = new Date().toLocaleString("ru-RU");
+  update(dbRef, updates);
+  const block = BLOCKS.find(b => b.tasks.find(t => t.id === activeModal));
+  const task = block?.tasks.find(t => t.id === activeModal);
+  if (task) {
+    const el = document.getElementById("task-" + activeModal);
+    if (el) el.outerHTML = buildTask(task);
+  }
+  closeModal();
+};
+
+onValue(dbRef, (snapshot) => {
+  const data = snapshot.val() || {};
+  statuses = data.statuses || {};
+  comments = data.comments || {};
+  const updatedAt = data.updatedAt || null;
+  buildUI();
+  const syncEl = document.getElementById("sync-info");
+  syncEl.textContent = updatedAt ? `Обновлено: ${updatedAt}` : "Ожидание данных...";
+});
+</script>
+</body>
+</html>
